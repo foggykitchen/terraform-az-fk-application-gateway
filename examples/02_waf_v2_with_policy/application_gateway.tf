@@ -7,7 +7,7 @@ module "application_gateway" {
   gateway_subnet_id   = module.vnet.subnet_ids["app_gateway"]
   public_ip_id        = module.public_ip.id
   sku_name            = "WAF_v2"
-  firewall_policy_id  = azurerm_web_application_firewall_policy.this.id
+  firewall_policy_id  = module.waf_policy.waf_policy_id
 
   frontend_ports        = { http = { port = 80 } }
   backend_address_pools = { web = { fqdns = ["example.com"] } }

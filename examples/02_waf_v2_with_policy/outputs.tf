@@ -5,6 +5,6 @@ output "public_ip_id" { value = module.public_ip.id }
 output "public_ip_address" { value = module.public_ip.ip_address }
 
 output "waf_policy_id" {
-  description = "ID of the temporary example-owned WAF Policy."
-  value       = azurerm_web_application_firewall_policy.this.id
+  description = "ID of the WAF Policy created by the dedicated module."
+  value       = module.waf_policy.waf_policy_id
 }
