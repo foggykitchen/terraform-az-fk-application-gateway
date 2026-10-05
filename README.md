@@ -41,7 +41,7 @@ Depending on configuration and example used, the module can create:
 - Fixed-capacity or autoscaled gateway capacity
 - Public and/or private frontend IP configurations
 - Frontend ports
-- IP address and FQDN backend pools
+- IP address, FQDN, and empty backend pools for separately managed VM/VMSS attachments
 - Mandatory custom HTTP or HTTPS health probes
 - Backend HTTP settings
 - HTTP and HTTPS listeners
@@ -148,6 +148,28 @@ At least one public or private frontend is required. Every backend HTTP setting 
 
 ---
 
+## Backend Pools for VM and VMSS Attachments
+
+Define an empty pool when a compute module manages backend membership through a NIC association or the VMSS IP configuration:
+
+```hcl
+# Inside module "application_gateway":
+backend_address_pools = {
+  web = {}
+}
+
+# Inside the consuming compute module:
+app_gateway_attachment = {
+  backend_pool_id = module.application_gateway.backend_address_pool_ids["web"]
+}
+```
+
+The pool exists before compute attaches to it. Do not also add the same NIC IP to `ip_addresses`: Azure rejects duplicate membership through an explicit address and a NIC association. IP-address and FQDN pools remain supported; at least one pool must always be defined.
+
+AzureRM documents `ip_addresses` and `fqdns` as optional and includes an empty pool in its [Application Gateway example](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/application_gateway).
+
+---
+
 ## WAF_v2 Usage
 
 Attach an externally managed Azure Web Application Firewall Policy by setting the WAF_v2 SKU and passing its resource ID:
@@ -216,7 +238,7 @@ The caller is responsible for granting the identity permission to read the certi
 | `public_ip_id` | `string` | ❌ | Existing Standard public IP ID |
 | `private_frontend` | `object` | ❌ | Private frontend subnet and IP configuration |
 | `frontend_ports` | `map(object)` | ✅ | Frontend ports keyed by logical name |
-| `backend_address_pools` | `map(object)` | ✅ | IP address or FQDN backend pools |
+| `backend_address_pools` | `map(object)` | ✅ | IP address, FQDN, or empty backend pools for VM/VMSS attachments |
 | `backend_http_settings` | `map(object)` | ✅ | Backend HTTP settings with probe references |
 | `probes` | `map(object)` | ✅ | Custom HTTP or HTTPS health probes |
 | `http_listeners` | `map(object)` | ✅ | HTTP or HTTPS listeners |

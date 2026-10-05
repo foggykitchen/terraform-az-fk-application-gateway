@@ -83,15 +83,15 @@ variable "frontend_ports" {
 }
 
 variable "backend_address_pools" {
-  description = "Backend pools keyed by logical name. Each pool accepts IP addresses, FQDNs, or both."
+  description = "Backend pools keyed by logical name. Each pool accepts IP addresses, FQDNs, or can be empty for separately managed NIC/VMSS attachments."
   type = map(object({
     name         = optional(string)
     ip_addresses = optional(list(string), [])
     fqdns        = optional(list(string), [])
   }))
   validation {
-    condition     = length(var.backend_address_pools) > 0 && alltrue([for pool in values(var.backend_address_pools) : length(pool.ip_addresses) + length(pool.fqdns) > 0])
-    error_message = "At least one backend pool is required and every pool must contain an IP address or FQDN."
+    condition     = length(var.backend_address_pools) > 0
+    error_message = "At least one backend pool is required. Pools may be empty when compute NICs or VMSS instances register separately."
   }
 }
 
