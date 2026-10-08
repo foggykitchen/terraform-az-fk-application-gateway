@@ -1,0 +1,15 @@
+#cloud-config
+package_update: true
+packages:
+  - nginx
+write_files:
+  - path: /var/www/html/health
+    permissions: "0644"
+    content: |
+      healthy
+  - path: /var/www/html/index.html
+    permissions: "0644"
+    content: |
+      FoggyKitchen private Application Gateway origin
+runcmd:
+  - [systemctl, enable, --now, nginx]

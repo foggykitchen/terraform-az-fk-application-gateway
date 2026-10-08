@@ -14,6 +14,7 @@ These examples are part of the **[FoggyKitchen.com training ecosystem](https://f
 | 01 | **Public HTTP Backend** | Standard_v2, public frontend, HTTP listener, external FQDN backend, custom probe |
 | 02 | **WAF_v2 with Policy** | VNet, Public IP, WAF_v2, WAF Policy, OWASP 3.2, Prevention mode |
 | 03 | **HTTPS Listener with Key Vault Certificate** | VNet, Public IP, managed identity, Key Vault, self-signed certificate, end-to-end HTTPS |
+| 04 | **Private Frontend with Private Link** | Private-only Standard_v2 gateway, dedicated Private Link subnet, NGINX VM, NAT Gateway, Front Door-ready service ID |
 
 Each example builds on the **concepts** introduced in the previous one, but can be applied independently for learning and experimentation.
 
@@ -38,7 +39,7 @@ tofu apply -var-file=/path/to/terraform.tfvars
 ```
 
 You can apply examples independently, but the **recommended approach is sequential**:
-01 → 02 → 03
+01 → 02 → 03 → 04
 
 This mirrors real-world application delivery design, where security and TLS capabilities are introduced only when required.
 
@@ -50,6 +51,7 @@ This mirrors real-world application delivery design, where security and TLS capa
 - No unused or placeholder Application Gateway configuration
 - Mandatory custom health probes
 - Clear separation of concerns between networking, identity, certificates, WAF policy, and gateway configuration
+- Explicit ownership boundaries between Application Gateway Private Link and downstream managed Private Endpoints
 - Focused FoggyKitchen modules are composed where they are available
 - Existing dependency IDs are explicit inputs when the example does not own those dependencies
 

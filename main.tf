@@ -3,13 +3,14 @@ locals {
     public  = "frontend-public"
     private = "frontend-private"
   }
-  frontend_port_names   = { for key, value in var.frontend_ports : key => coalesce(value.name, key) }
-  backend_pool_names    = { for key, value in var.backend_address_pools : key => coalesce(value.name, key) }
-  backend_setting_names = { for key, value in var.backend_http_settings : key => coalesce(value.name, key) }
-  probe_names           = { for key, value in var.probes : key => coalesce(value.name, key) }
-  listener_names        = { for key, value in var.http_listeners : key => coalesce(value.name, key) }
-  certificate_names     = { for key, value in nonsensitive(var.ssl_certificates) : key => coalesce(value.name, key) }
-  path_map_names        = { for key, value in var.url_path_maps : key => coalesce(value.name, key) }
+  frontend_port_names              = { for key, value in var.frontend_ports : key => coalesce(value.name, key) }
+  backend_pool_names               = { for key, value in var.backend_address_pools : key => coalesce(value.name, key) }
+  backend_setting_names            = { for key, value in var.backend_http_settings : key => coalesce(value.name, key) }
+  probe_names                      = { for key, value in var.probes : key => coalesce(value.name, key) }
+  listener_names                   = { for key, value in var.http_listeners : key => coalesce(value.name, key) }
+  certificate_names                = { for key, value in nonsensitive(var.ssl_certificates) : key => coalesce(value.name, key) }
+  path_map_names                   = { for key, value in var.url_path_maps : key => coalesce(value.name, key) }
+  private_link_configuration_names = { for key, value in var.private_link_configurations : key => coalesce(value.name, key) }
 }
 
 resource "azurerm_application_gateway" "this" {
@@ -40,6 +41,24 @@ resource "azurerm_application_gateway" "this" {
     subnet_id = var.gateway_subnet_id
   }
 
+  dynamic "private_link_configuration" {
+    for_each = var.private_link_configurations
+    content {
+      name = local.private_link_configuration_names[private_link_configuration.key]
+
+      dynamic "ip_configuration" {
+        for_each = private_link_configuration.value.ip_configurations
+        content {
+          name                          = coalesce(ip_configuration.value.name, ip_configuration.key)
+          subnet_id                     = ip_configuration.value.subnet_id
+          primary                       = ip_configuration.value.primary
+          private_ip_address_allocation = ip_configuration.value.private_ip_address_allocation
+          private_ip_address            = ip_configuration.value.private_ip_address
+        }
+      }
+    }
+  }
+
   dynamic "frontend_ip_configuration" {
     for_each = var.public_ip_id == null ? {} : { public = var.public_ip_id }
     content {
@@ -51,10 +70,11 @@ resource "azurerm_application_gateway" "this" {
   dynamic "frontend_ip_configuration" {
     for_each = var.private_frontend == null ? {} : { private = var.private_frontend }
     content {
-      name                          = local.frontend_ip_names.private
-      subnet_id                     = frontend_ip_configuration.value.subnet_id
-      private_ip_address_allocation = frontend_ip_configuration.value.private_ip_address_allocation
-      private_ip_address            = frontend_ip_configuration.value.private_ip_address
+      name                            = local.frontend_ip_names.private
+      subnet_id                       = frontend_ip_configuration.value.subnet_id
+      private_ip_address_allocation   = frontend_ip_configuration.value.private_ip_address_allocation
+      private_ip_address              = frontend_ip_configuration.value.private_ip_address
+      private_link_configuration_name = frontend_ip_configuration.value.private_link_configuration_key == null ? null : local.private_link_configuration_names[frontend_ip_configuration.value.private_link_configuration_key]
     }
   }
 
@@ -213,6 +233,32 @@ resource "azurerm_application_gateway" "this" {
     precondition {
       condition     = alltrue([for listener in values(var.http_listeners) : listener.frontend_type != "public" || var.public_ip_id != null]) && alltrue([for listener in values(var.http_listeners) : listener.frontend_type != "private" || var.private_frontend != null])
       error_message = "Every listener must reference a configured public or private frontend."
+    }
+    precondition {
+      condition     = var.private_frontend == null || var.private_frontend.private_link_configuration_key == null || contains(keys(var.private_link_configurations), var.private_frontend.private_link_configuration_key)
+      error_message = "private_frontend.private_link_configuration_key must reference an entry in private_link_configurations."
+    }
+    precondition {
+      condition     = length(var.private_link_configurations) == 0 || (var.private_frontend != null && var.private_frontend.private_link_configuration_key != null)
+      error_message = "Private Link configurations require a private frontend associated through private_link_configuration_key."
+    }
+    precondition {
+      condition     = length(var.private_link_configurations) == 0 || anytrue([for listener in values(var.http_listeners) : listener.frontend_type == "private"])
+      error_message = "Application Gateway Private Link requires at least one listener on the associated private frontend."
+    }
+    precondition {
+      condition = alltrue(flatten([
+        for config in values(var.private_link_configurations) : [for ip in values(config.ip_configurations) : ip.subnet_id != var.gateway_subnet_id]
+      ]))
+      error_message = "Application Gateway Private Link IP configurations must use a subnet separate from the gateway subnet."
+    }
+    precondition {
+      condition     = alltrue([for config in values(var.private_link_configurations) : length(distinct([for ip in values(config.ip_configurations) : ip.subnet_id])) == 1])
+      error_message = "All IP configurations in one Private Link configuration must use the same dedicated subnet."
+    }
+    precondition {
+      condition     = alltrue([for name in values(local.private_link_configuration_names) : length(var.name) + length(name) <= 70])
+      error_message = "The combined Application Gateway and Private Link configuration name length must not exceed 70 characters."
     }
     precondition {
       condition     = alltrue([for cert in values(nonsensitive(var.ssl_certificates)) : (cert.key_vault_secret_id != null) != (cert.data != null)])

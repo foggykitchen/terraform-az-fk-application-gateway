@@ -61,13 +61,56 @@ variable "public_ip_id" {
 }
 
 variable "private_frontend" {
-  description = "Optional private frontend on the gateway subnet or another eligible subnet."
+  description = "Optional private frontend. private_link_configuration_key associates it with an Application Gateway Private Link configuration by logical key."
   type = object({
-    subnet_id                     = string
-    private_ip_address_allocation = optional(string, "Dynamic")
-    private_ip_address            = optional(string)
+    subnet_id                      = string
+    private_ip_address_allocation  = optional(string, "Dynamic")
+    private_ip_address             = optional(string)
+    private_link_configuration_key = optional(string)
   })
   default = null
+}
+
+variable "private_link_configurations" {
+  description = "Application Gateway Private Link configurations keyed by logical name. Azure currently supports 1-8 dynamically allocated IP configurations in a dedicated subnet per configuration."
+  type = map(object({
+    name = optional(string)
+    ip_configurations = map(object({
+      name                          = optional(string)
+      subnet_id                     = string
+      primary                       = bool
+      private_ip_address_allocation = optional(string, "Dynamic")
+      private_ip_address            = optional(string)
+    }))
+  }))
+  default = {}
+
+  validation {
+    condition     = alltrue([for config in values(var.private_link_configurations) : length(config.ip_configurations) >= 1 && length(config.ip_configurations) <= 8])
+    error_message = "Each Private Link configuration must contain between one and eight IP configurations."
+  }
+
+  validation {
+    condition = alltrue([
+      for key, config in var.private_link_configurations :
+      trimspace(coalesce(config.name, key)) != "" && alltrue([for ip_key, ip in config.ip_configurations : trimspace(coalesce(ip.name, ip_key)) != ""])
+    ])
+    error_message = "Private Link configuration and nested IP configuration names must not be empty."
+  }
+
+  validation {
+    condition     = alltrue([for config in values(var.private_link_configurations) : length([for ip in values(config.ip_configurations) : ip if ip.primary]) == 1])
+    error_message = "Each Private Link configuration must contain exactly one primary IP configuration."
+  }
+
+  validation {
+    condition = alltrue(flatten([
+      for config in values(var.private_link_configurations) : [
+        for ip in values(config.ip_configurations) : ip.private_ip_address_allocation == "Dynamic" && ip.private_ip_address == null
+      ]
+    ]))
+    error_message = "Application Gateway Private Link IP configurations must use Dynamic allocation and must not set private_ip_address."
+  }
 }
 
 variable "frontend_ports" {

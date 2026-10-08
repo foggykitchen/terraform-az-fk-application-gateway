@@ -40,6 +40,7 @@ Depending on configuration and example used, the module can create:
 - One Standard_v2 or WAF_v2 Application Gateway
 - Fixed-capacity or autoscaled gateway capacity
 - Public and/or private frontend IP configurations
+- Optional Application Gateway Private Link configurations associated with the private frontend
 - Frontend ports
 - IP address, FQDN, and empty backend pools for separately managed VM/VMSS attachments
 - Mandatory custom HTTP or HTTPS health probes
@@ -61,6 +62,7 @@ The module intentionally does **not** create:
 - Backend Virtual Machines, Virtual Machine Scale Sets, or application services
 - Key Vault, certificates, managed identities, or RBAC assignments
 - Log Analytics workspaces
+- Private Endpoints, including the Azure Front Door-managed Private Endpoint
 
 Each of those concerns belongs in its **own dedicated module**.
 
@@ -74,6 +76,7 @@ terraform-az-fk-application-gateway/
 │   ├── 01_public_http_backend/
 │   ├── 02_waf_v2_with_policy/
 │   ├── 03_https_listener_key_vault_cert/
+│   ├── 04_private_frontend_private_link/
 │   └── README.md
 ├── main.tf
 ├── inputs.tf
@@ -237,6 +240,7 @@ The caller is responsible for granting the identity permission to read the certi
 | `autoscale_configuration` | `object` | ❌ | Minimum and optional maximum autoscale capacity |
 | `public_ip_id` | `string` | ❌ | Existing Standard public IP ID |
 | `private_frontend` | `object` | ❌ | Private frontend subnet and IP configuration |
+| `private_link_configurations` | `map(object)` | ❌ | Application Gateway Private Link configurations and nested dynamic IP configurations, keyed by logical name |
 | `frontend_ports` | `map(object)` | ✅ | Frontend ports keyed by logical name |
 | `backend_address_pools` | `map(object)` | ✅ | IP address, FQDN, or empty backend pools for VM/VMSS attachments |
 | `backend_http_settings` | `map(object)` | ✅ | Backend HTTP settings with probe references |
@@ -263,6 +267,8 @@ The caller is responsible for granting the identity permission to read the certi
 | `application_gateway_name` | Application Gateway name |
 | `backend_address_pool_ids` | Backend pool IDs keyed by resolved name |
 | `frontend_ip_configuration_ids` | Frontend IP configuration IDs keyed by resolved name |
+| `private_link_configuration_names` | Private Link configuration names keyed by logical name |
+| `private_link_service_ids` | Derived Azure-managed Private Link Service IDs keyed by logical name |
 | `http_listener_ids` | HTTP listener IDs keyed by resolved name |
 | `request_routing_rule_ids` | Request-routing rule IDs keyed by resolved name |
 | `diagnostic_setting_ids` | Diagnostic setting IDs keyed by logical name |
@@ -275,8 +281,13 @@ The caller is responsible for granting the identity permission to read the certi
 - Health probes are mandatory and modeled independently from backend settings
 - Networking, Public IP, identity, WAF Policy, certificates, and monitoring destinations remain separate concerns
 - Public and private entry points are intentional architectural choices
+- Private Link configuration is owned here; its dedicated subnet, consumers, and managed Private Endpoints remain external composition concerns
 - Map-based inputs make relationships between listeners, rules, pools, settings, and probes visible
 - Outputs are first-class citizens for downstream composition
+
+Application Gateway Private Link requires Standard_v2 or WAF_v2, a dedicated Private Link subnet separate from the gateway subnet, disabled Private Link service network policies on that subnet, and a listener on the associated frontend. The current Azure service documentation supports only dynamically allocated Private Link IP configurations, requires exactly one primary configuration, permits up to eight IP configurations, and limits the combined Application Gateway and Private Link configuration names to 70 characters.
+
+Azure creates the backing `Microsoft.Network/privateLinkServices` resource. AzureRM exposes the configuration object but not that generated service resource ID, so `private_link_service_ids` deterministically derives Azure's documented `_e41f87a2_{applicationGatewayName}_{privateLinkConfigurationName}` ID for downstream consumers such as Azure Front Door Premium.
 
 ---
 
