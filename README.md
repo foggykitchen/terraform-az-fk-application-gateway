@@ -76,7 +76,6 @@ terraform-az-fk-application-gateway/
 │   ├── 01_public_http_backend/
 │   ├── 02_waf_v2_with_policy/
 │   ├── 03_https_listener_key_vault_cert/
-│   ├── 04_private_frontend_private_link/
 │   └── README.md
 ├── main.tf
 ├── inputs.tf
@@ -288,6 +287,8 @@ The caller is responsible for granting the identity permission to read the certi
 Application Gateway Private Link requires Standard_v2 or WAF_v2, a dedicated Private Link subnet separate from the gateway subnet, disabled Private Link service network policies on that subnet, and a listener on the associated frontend. The current Azure service documentation supports only dynamically allocated Private Link IP configurations, requires exactly one primary configuration, permits up to eight IP configurations, and limits the combined Application Gateway and Private Link configuration names to 70 characters.
 
 Azure creates the backing `Microsoft.Network/privateLinkServices` resource. AzureRM exposes the configuration object but not that generated service resource ID, so `private_link_service_ids` deterministically derives Azure's documented `_e41f87a2_{applicationGatewayName}_{privateLinkConfigurationName}` ID for downstream consumers such as Azure Front Door Premium.
+
+For a complete, deployable Front Door Premium → managed Private Endpoint → Application Gateway Private Link → private NGINX flow, use [`terraform-az-fk-frontdoor/examples/02_premium_private_link_origin`](https://github.com/foggykitchen/terraform-az-fk-frontdoor/tree/v0.1.0/examples/02_premium_private_link_origin). The end-to-end example belongs to the consuming Front Door module so the managed Private Endpoint lifecycle and approval workflow remain demonstrated in one canonical place.
 
 ---
 

@@ -1,4 +1,0 @@
-resource_group_name = "foggykitchen-appgw-private-link-rg"
-location            = "westeurope"
-admin_username      = "azureuser"
-ssh_public_key      = "ssh-ed25519 REPLACE_WITH_YOUR_PUBLIC_KEY"

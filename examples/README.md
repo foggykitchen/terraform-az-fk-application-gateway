@@ -14,7 +14,6 @@ These examples are part of the **[FoggyKitchen.com training ecosystem](https://f
 | 01 | **Public HTTP Backend** | Standard_v2, public frontend, HTTP listener, external FQDN backend, custom probe |
 | 02 | **WAF_v2 with Policy** | VNet, Public IP, WAF_v2, WAF Policy, OWASP 3.2, Prevention mode |
 | 03 | **HTTPS Listener with Key Vault Certificate** | VNet, Public IP, managed identity, Key Vault, self-signed certificate, end-to-end HTTPS |
-| 04 | **Private Frontend with Private Link** | Private-only Standard_v2 gateway, dedicated Private Link subnet, NGINX VM, NAT Gateway, Front Door-ready service ID |
 
 Each example builds on the **concepts** introduced in the previous one, but can be applied independently for learning and experimentation.
 
@@ -39,7 +38,7 @@ tofu apply -var-file=/path/to/terraform.tfvars
 ```
 
 You can apply examples independently, but the **recommended approach is sequential**:
-01 → 02 → 03 → 04
+01 → 02 → 03
 
 This mirrors real-world application delivery design, where security and TLS capabilities are introduced only when required.
 
@@ -72,6 +71,7 @@ These examples intentionally avoid:
 - [FoggyKitchen Azure Managed Identity Module (terraform-az-fk-managed-identity)](https://github.com/foggykitchen/terraform-az-fk-managed-identity)
 - [FoggyKitchen Azure Key Vault Module (terraform-az-fk-key-vault)](https://github.com/foggykitchen/terraform-az-fk-key-vault)
 - [FoggyKitchen Azure Load Balancer Module (terraform-az-fk-loadbalancer)](https://github.com/foggykitchen/terraform-az-fk-loadbalancer)
+- [End-to-end Front Door Premium with Application Gateway Private Link](https://github.com/foggykitchen/terraform-az-fk-frontdoor/tree/v0.1.0/examples/02_premium_private_link_origin)
 
 ---
 
